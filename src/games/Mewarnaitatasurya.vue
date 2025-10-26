@@ -1,74 +1,3 @@
-<template>
-  <div class="Mewarnaitatasurya">
-    <!-- Header dengan tombol Back, Undo, Redo -->
-    <div class="header">
-      <button class="back-btn" @click="$router.push('/games')">← Back</button>
-      <div class="history-btns">
-        <button class="history-btn" @click="undo" :disabled="historyIndex <= 0">↶ Undo</button>
-        <button class="history-btn" @click="redo" :disabled="historyIndex >= history.length - 1">↷ Redo</button>
-      </div>
-    </div>
-
-    <!-- Area Kanvas -->
-    <div class="canvas-container">
-      <div class="canvas" :style="{ width: canvasWidth + 'px', height: canvasHeight + 'px' }">
-        <canvas ref="drawCanvas" :width="canvasWidth" :height="canvasHeight"
-          style="position: absolute; touch-action: none;"></canvas>
-        <canvas ref="objectCanvas" :width="canvasWidth" :height="canvasHeight"
-          style="position: absolute; touch-action: none;"
-          @mousedown="startAction"
-          @mouseup="stopAction"
-          @mousemove="moveAction"
-          @touchstart.prevent="handleTouchStart"
-          @touchend.prevent="handleTouchEnd"
-          @touchmove.prevent="handleTouchMove"></canvas>
-      </div>
-    </div>
-
-    <!-- Toolbar - Pensil, Eraser, Warna -->
-    <div class="toolbar-section">
-      <div class="tools-colors-row">
-        <button class="tool-btn" :class="{active: currentTool === 'pencil'}" @click="setTool('pencil')">✏️</button>
-        <button class="tool-btn" :class="{active: currentTool === 'eraser'}" @click="setTool('eraser')">🧽</button>
-
-        <button v-for="color in colors" :key="color" 
-          :style="{background: color}"
-          class="color-btn" 
-          :class="{active: currentColor === color}"
-          @click="setColor(color)">
-        </button>
-      </div>
-
-      <div class="size-control">
-        <label>{{ currentTool === 'pencil' ? '✏️' : '🧽' }} : {{ toolSize }}px</label>
-        <input type="range" min="1" max="50" v-model.number="toolSize" />
-      </div>
-    </div>
-
-    <!-- Palette Planet & Save -->
-    <div class="palette-section">
-      <img v-for="item in items" :key="item.name" :src="item.src"
-        :alt="item.name" class="palette-item" @click="addItem(item)" />
-      <button class="save-btn" @click="saveCanvas">💾 Save</button>
-    </div>
-
-    <!-- Panel kontrol -->
-    <div v-if="selectedObj" class="control-panel">
-      <div class="controls">
-        <div class="control-item">
-          <label>Size: {{ selectedObj.size }}</label>
-          <input type="range" min="30" max="200" v-model.number="selectedObj.size" @input="redrawObjects" />
-        </div>
-        <div class="control-item">
-          <label>Rotate: {{ selectedObj.rotation }}°</label>
-          <input type="range" min="0" max="360" v-model.number="selectedObj.rotation" @input="redrawObjects" />
-        </div>
-        <button class="delete-btn" @click="deleteSelected">🗑️</button>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script>
 export default {
   name: "MewarnaiTataSurya",
@@ -100,42 +29,36 @@ export default {
       history: [],
       historyIndex: -1,
       canvasWidth: 1000,
-      canvasHeight: 500
-    }
+      canvasHeight: 500,
+
+      // ➕ Tambahan untuk zoom & panning
+      scale: 1,
+      lastScale: 1,
+      panX: 0,
+      panY: 0,
+      lastPanX: 0,
+      lastPanY: 0,
+      pinchStartDist: null,
+      pinchStartScale: 1,
+      isPinching: false,
+    };
   },
   mounted() {
     this.setCanvasSize();
-    window.addEventListener('resize', this.setCanvasSize);
+    window.addEventListener("resize", this.setCanvasSize);
 
     this.drawCtx = this.$refs.drawCanvas.getContext("2d");
     this.objectCtx = this.$refs.objectCanvas.getContext("2d");
     this.drawCtx.lineCap = "round";
 
-    this.drawCtx.fillStyle = 'white';
+    this.drawCtx.fillStyle = "white";
     this.drawCtx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     this.saveState();
 
-    // ✅ FIX: tambahkan event listener dengan passive:false agar sentuhan berfungsi
     const objCanvas = this.$refs.objectCanvas;
-    objCanvas.addEventListener('touchstart', this.handleTouchStart, { passive: false });
-    objCanvas.addEventListener('touchmove', this.handleTouchMove, { passive: false });
-    objCanvas.addEventListener('touchend', this.handleTouchEnd, { passive: false });
-
-    if (!this.isMobile()) {
-      objCanvas.addEventListener('wheel', this.resizeObject);
-      window.addEventListener('keydown', this.handleKeyPress);
-    }
-  },
-  beforeUnmount() {
-    window.removeEventListener('resize', this.setCanvasSize);
-    const objCanvas = this.$refs.objectCanvas;
-    objCanvas.removeEventListener('touchstart', this.handleTouchStart);
-    objCanvas.removeEventListener('touchmove', this.handleTouchMove);
-    objCanvas.removeEventListener('touchend', this.handleTouchEnd);
-    if (!this.isMobile()) {
-      objCanvas.removeEventListener('wheel', this.resizeObject);
-      window.removeEventListener('keydown', this.handleKeyPress);
-    }
+    objCanvas.addEventListener("touchstart", this.handleTouchStart, { passive: false });
+    objCanvas.addEventListener("touchmove", this.handleTouchMove, { passive: false });
+    objCanvas.addEventListener("touchend", this.handleTouchEnd, { passive: false });
   },
   methods: {
     isMobile() {
@@ -143,7 +66,6 @@ export default {
     },
     setCanvasSize() {
       if (this.isMobile()) {
-        // ✅ lebih besar di mobile biar area menggambar cukup
         this.canvasWidth = window.innerWidth * 0.95;
         this.canvasHeight = window.innerHeight * 0.5;
       } else {
@@ -151,9 +73,12 @@ export default {
         this.canvasHeight = 500;
       }
     },
+    // =========================
+    // 🎨 DRAWING & OBJECT TOOLS
+    // =========================
     setColor(color) {
       this.currentColor = color;
-      if (this.currentTool === 'eraser') this.currentTool = 'pencil';
+      if (this.currentTool === "eraser") this.currentTool = "pencil";
     },
     setTool(tool) {
       this.currentTool = tool;
@@ -162,43 +87,72 @@ export default {
       const rect = this.$refs.objectCanvas.getBoundingClientRect();
       const scaleX = this.canvasWidth / rect.width;
       const scaleY = this.canvasHeight / rect.height;
-
-      if (e.touches && e.touches.length > 0) {
-        return {
-          x: (e.touches[0].clientX - rect.left) * scaleX,
-          y: (e.touches[0].clientY - rect.top) * scaleY
-        };
-      } else {
-        return {
-          x: (e.offsetX ?? e.clientX - rect.left) * scaleX,
-          y: (e.offsetY ?? e.clientY - rect.top) * scaleY
-        };
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY,
+      };
+    },
+    // =========================
+    // 👆 TOUCH HANDLING
+    // =========================
+    handleTouchStart(e) {
+      if (e.touches.length === 1) {
+        // single touch → drag or draw
+        const t = e.touches[0];
+        const { x, y } = this.getCanvasCoordinates(t);
+        this.startAction({ offsetX: (x - this.panX) / this.scale, offsetY: (y - this.panY) / this.scale });
+      } else if (e.touches.length === 2) {
+        // double touch → pinch zoom
+        this.isPinching = true;
+        this.pinchStartDist = this.getDistance(e.touches[0], e.touches[1]);
+        this.pinchStartScale = this.scale;
+        const center = this.getTouchCenter(e.touches[0], e.touches[1]);
+        this.lastPanX = this.panX;
+        this.lastPanY = this.panY;
+        this.centerStart = center;
       }
     },
-    handleTouchStart(e) {
-      e.preventDefault();
-      const coords = this.getCanvasCoordinates(e);
-      this.startAction({ offsetX: coords.x, offsetY: coords.y });
-    },
     handleTouchMove(e) {
-      e.preventDefault();
-      const coords = this.getCanvasCoordinates(e);
-      this.moveAction({ offsetX: coords.x, offsetY: coords.y });
+      if (this.isPinching && e.touches.length === 2) {
+        e.preventDefault();
+        const newDist = this.getDistance(e.touches[0], e.touches[1]);
+        const scaleChange = newDist / this.pinchStartDist;
+        this.scale = Math.min(Math.max(this.pinchStartScale * scaleChange, 0.5), 3); // batas zoom
+        const newCenter = this.getTouchCenter(e.touches[0], e.touches[1]);
+        this.panX = this.lastPanX + (newCenter.x - this.centerStart.x);
+        this.panY = this.lastPanY + (newCenter.y - this.centerStart.y);
+        this.redrawObjects();
+        return;
+      }
+
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        const { x, y } = this.getCanvasCoordinates(t);
+        this.moveAction({ offsetX: (x - this.panX) / this.scale, offsetY: (y - this.panY) / this.scale });
+      }
     },
     handleTouchEnd(e) {
-      e.preventDefault();
+      if (e.touches.length === 0 && this.isPinching) {
+        this.isPinching = false;
+      }
       this.stopAction();
     },
+    getDistance(t1, t2) {
+      const dx = t2.clientX - t1.clientX;
+      const dy = t2.clientY - t1.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    },
+    getTouchCenter(t1, t2) {
+      return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+    },
+    // =========================
+    // 🪐 OBJECT CONTROL
+    // =========================
     startAction(e) {
       const { offsetX, offsetY } = e;
       for (let i = this.objects.length - 1; i >= 0; i--) {
         const obj = this.objects[i];
-        if (
-          offsetX >= obj.x &&
-          offsetX <= obj.x + obj.size &&
-          offsetY >= obj.y &&
-          offsetY <= obj.y + obj.size
-        ) {
+        if (offsetX >= obj.x && offsetX <= obj.x + obj.size && offsetY >= obj.y && offsetY <= obj.y + obj.size) {
           this.draggingObj = obj;
           this.selectedObj = obj;
           this.offsetX = offsetX - obj.x;
@@ -219,12 +173,12 @@ export default {
         this.redrawObjects();
       } else if (this.drawing) {
         if (this.currentTool === "eraser") {
-          this.drawCtx.globalCompositeOperation = 'destination-out';
+          this.drawCtx.globalCompositeOperation = "destination-out";
           this.drawCtx.lineWidth = this.toolSize;
           this.drawCtx.lineTo(offsetX, offsetY);
           this.drawCtx.stroke();
         } else {
-          this.drawCtx.globalCompositeOperation = 'source-over';
+          this.drawCtx.globalCompositeOperation = "source-over";
           this.drawCtx.strokeStyle = this.currentColor;
           this.drawCtx.lineWidth = this.toolSize;
           this.drawCtx.lineTo(offsetX, offsetY);
@@ -247,7 +201,7 @@ export default {
         y: Math.random() * (this.canvasHeight - size),
         size: size,
         rotation: 0,
-        src: item.src
+        src: item.src,
       };
       obj.img.src = item.src;
       obj.img.onload = () => {
@@ -257,7 +211,13 @@ export default {
       };
     },
     redrawObjects() {
-      this.objectCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+      this.objectCtx.setTransform(this.scale, 0, 0, this.scale, this.panX, this.panY);
+      this.objectCtx.clearRect(
+        -this.panX / this.scale,
+        -this.panY / this.scale,
+        this.canvasWidth / this.scale,
+        this.canvasHeight / this.scale
+      );
       for (let obj of this.objects) {
         this.objectCtx.save();
         this.objectCtx.translate(obj.x + obj.size / 2, obj.y + obj.size / 2);
@@ -277,28 +237,6 @@ export default {
       link.download = "gambar_tata_surya.png";
       link.href = temp.toDataURL();
       link.click();
-    },
-    resizeObject(e) {
-      if (!this.selectedObj) return;
-      const delta = e.deltaY > 0 ? -5 : 5;
-      this.selectedObj.size = Math.max(30, Math.min(200, this.selectedObj.size + delta));
-      this.redrawObjects();
-      this.saveState();
-    },
-    handleKeyPress(e) {
-      if (e.ctrlKey && e.key === "z") this.undo();
-      else if (e.ctrlKey && e.key === "y") this.redo();
-      else if (this.selectedObj) {
-        if (e.key === "Delete" || e.key === "Backspace") this.deleteSelected();
-      }
-    },
-    deleteSelected() {
-      if (this.selectedObj) {
-        this.objects = this.objects.filter(o => o !== this.selectedObj);
-        this.selectedObj = null;
-        this.redrawObjects();
-        this.saveState();
-      }
     },
     saveState() {
       this.history = this.history.slice(0, this.historyIndex + 1);
@@ -331,13 +269,14 @@ export default {
         this.drawCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
         this.drawCtx.drawImage(img, 0, 0);
       };
-      this.objects = s.objects.map(o => ({ ...o, img: Object.assign(new Image(), { src: o.src }) }));
+      this.objects = s.objects.map((o) => ({ ...o, img: Object.assign(new Image(), { src: o.src }) }));
       this.selectedObj = null;
       this.redrawObjects();
-    }
-  }
+    },
+  },
 };
 </script>
+
 
 <style scoped>
 * {
