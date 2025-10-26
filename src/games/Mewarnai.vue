@@ -9,51 +9,47 @@
       <button class="history-btn" @click="redo" :disabled="historyIndex >= history.length - 1">↷ Redo</button>
     </div>
 
-    <!-- Area Kanvas - Layer ganda -->
+    <!-- Area Kanvas -->
     <div class="canvas">
-      <!-- Canvas untuk background dan coretan -->
-      <canvas ref="drawCanvas" width="1000" height="500"
-        style="position: absolute;"></canvas>
-      <!-- Canvas untuk objek yang bisa di-drag -->
-      <canvas ref="objectCanvas" width="1000" height="500"
+      <canvas ref="drawCanvas" width="1000" height="500" style="position: absolute;"></canvas>
+
+      <!-- Canvas interaktif -->
+      <canvas ref="objectCanvas"
+        width="1000" height="500"
         style="position: absolute;"
         @mousedown="startAction"
+        @mousemove="moveAction"
         @mouseup="stopAction"
-        @mousemove="moveAction"></canvas>
+        @mouseleave="stopAction"
+
+        @touchstart.prevent="startAction"
+        @touchmove.prevent="moveAction"
+        @touchend.prevent="stopAction"
+      ></canvas>
     </div>
 
-    <!-- Toolbar kiri -->
+    <!-- Toolbar -->
     <div class="toolbar">
-      <!-- Alat menggambar -->
       <button class="tool" :class="{active: currentTool === 'pencil'}" @click="setTool('pencil')">✏️</button>
       <button class="tool" :class="{active: currentTool === 'eraser'}" @click="setTool('eraser')">🧽</button>
 
-      <!-- Warna -->
-      <button v-for="color in colors" :key="color" :style="{background: color}"
-        class="tool" @click="setColor(color)">
-      </button>
-      
-      <!-- Ukuran Tool -->
+      <button v-for="color in colors" :key="color" :style="{background: color}" class="tool" @click="setColor(color)"></button>
+
       <div class="size-control">
         <label>{{ currentTool === 'pencil' ? '✏️' : '🧽' }}: {{ toolSize }}px</label>
         <input type="range" min="1" max="50" v-model.number="toolSize" />
       </div>
     </div>
 
-    <!-- Palet benda langit di bawah -->
+    <!-- Palet -->
     <div class="palette">
-      <img v-for="item in items" :key="item.name" :src="item.src"
-        :alt="item.name" class="palette-item" @click="addItem(item)" />
-
-      <!-- Tombol Save -->
+      <img v-for="item in items" :key="item.name" :src="item.src" :alt="item.name" class="palette-item" @click="addItem(item)" />
       <button class="save-btn" @click="saveCanvas">💾 Save</button>
     </div>
 
-    <!-- Panel kontrol untuk objek terpilih -->
+    <!-- Panel kontrol -->
     <div v-if="selectedObj" class="control-panel">
-      <div class="hint">
-        📏 Scroll/+- ukuran | 🔄 R rotasi 15° | 🗑️ Delete hapus | Ctrl+Z undo | Ctrl+Y redo
-      </div>
+      <div class="hint">📏 Scroll/+- ukuran | 🔄 R rotasi 15° | 🗑️ Delete | Ctrl+Z undo | Ctrl+Y redo</div>
       <div class="controls">
         <div class="control-item">
           <label>Rotasi: {{ selectedObj.rotation }}°</label>
@@ -103,14 +99,9 @@ export default {
     this.drawCtx = this.$refs.drawCanvas.getContext("2d")
     this.objectCtx = this.$refs.objectCanvas.getContext("2d")
     this.drawCtx.lineCap = "round"
-
-    // 🌟 Ganti background dengan warna putih polos
     this.drawCtx.fillStyle = "white"
     this.drawCtx.fillRect(0, 0, this.$refs.drawCanvas.width, this.$refs.drawCanvas.height)
-
-    this.saveState() // simpan state awal
-
-    // Event listeners
+    this.saveState()
     this.$refs.objectCanvas.addEventListener('wheel', this.resizeObject)
     window.addEventListener('keydown', this.handleKeyPress)
   },
@@ -119,66 +110,61 @@ export default {
     window.removeEventListener('keydown', this.handleKeyPress)
   },
   methods: {
-    setColor(color) {
-      this.currentColor = color
+    getCoords(e) {
+      const rect = this.$refs.objectCanvas.getBoundingClientRect()
+      let x, y
+      if (e.touches && e.touches[0]) {
+        x = e.touches[0].clientX - rect.left
+        y = e.touches[0].clientY - rect.top
+      } else {
+        x = e.offsetX
+        y = e.offsetY
+      }
+      return { x, y }
     },
-    setTool(tool) {
-      this.currentTool = tool
-    },
+    setColor(color) { this.currentColor = color },
+    setTool(tool) { this.currentTool = tool },
+
     startAction(e) {
-      const { offsetX, offsetY } = e
-      
+      const { x, y } = this.getCoords(e)
       for (let i = this.objects.length - 1; i >= 0; i--) {
         const obj = this.objects[i]
-        if (
-          offsetX >= obj.x &&
-          offsetX <= obj.x + obj.size &&
-          offsetY >= obj.y &&
-          offsetY <= obj.y + obj.size
-        ) {
+        if (x >= obj.x && x <= obj.x + obj.size && y >= obj.y && y <= obj.y + obj.size) {
           this.draggingObj = obj
           this.selectedObj = obj
-          this.offsetX = offsetX - obj.x
-          this.offsetY = offsetY - obj.y
+          this.offsetX = x - obj.x
+          this.offsetY = y - obj.y
           return
         }
       }
-      
       this.selectedObj = null
       this.drawing = true
       this.drawCtx.beginPath()
-      this.drawCtx.moveTo(offsetX, offsetY)
+      this.drawCtx.moveTo(x, y)
     },
     moveAction(e) {
-      const { offsetX, offsetY } = e
-      
+      const { x, y } = this.getCoords(e)
       if (this.draggingObj) {
-        this.draggingObj.x = offsetX - this.offsetX
-        this.draggingObj.y = offsetY - this.offsetY
+        this.draggingObj.x = x - this.offsetX
+        this.draggingObj.y = y - this.offsetY
         this.redrawObjects()
       } else if (this.drawing) {
         if (this.currentTool === "eraser") {
           this.drawCtx.globalCompositeOperation = 'destination-out'
           this.drawCtx.lineWidth = this.toolSize
-          this.drawCtx.lineTo(offsetX, offsetY)
+          this.drawCtx.lineTo(x, y)
           this.drawCtx.stroke()
         } else if (this.currentTool === "pencil") {
           this.drawCtx.globalCompositeOperation = 'source-over'
           this.drawCtx.strokeStyle = this.currentColor
           this.drawCtx.lineWidth = this.toolSize
-          this.drawCtx.lineTo(offsetX, offsetY)
+          this.drawCtx.lineTo(x, y)
           this.drawCtx.stroke()
         }
       }
     },
     stopAction() {
-      if (this.drawing) {
-        this.drawCtx.globalCompositeOperation = 'source-over'
-        this.saveState()
-      }
-      if (this.draggingObj) {
-        this.saveState()
-      }
+      if (this.drawing || this.draggingObj) this.saveState()
       this.drawing = false
       this.draggingObj = null
       this.drawCtx.closePath()
@@ -232,45 +218,23 @@ export default {
       }
     },
     handleKeyPress(e) {
-      if (e.ctrlKey && e.key === 'z') {
-        e.preventDefault()
-        this.undo()
-      } else if (e.ctrlKey && e.key === 'y') {
-        e.preventDefault()
-        this.redo()
-      }
-
-      if (this.selectedObj) {
-        if (e.key === '+' || e.key === '=') {
-          e.preventDefault()
-          this.selectedObj.size = Math.min(200, this.selectedObj.size + 5)
-          this.redrawObjects()
-          this.saveState()
-        } else if (e.key === '-' || e.key === '_') {
-          e.preventDefault()
-          this.selectedObj.size = Math.max(30, this.selectedObj.size - 5)
-          this.redrawObjects()
-          this.saveState()
-        } else if (e.key.toLowerCase() === 'r') {
-          e.preventDefault()
-          this.selectedObj.rotation = (this.selectedObj.rotation + 15) % 360
-          this.redrawObjects()
-          this.saveState()
-        } else if (e.key === 'Delete' || e.key === 'Backspace') {
-          e.preventDefault()
-          this.deleteSelected()
-        }
-      }
+      if (e.ctrlKey && e.key === 'z') this.undo()
+      else if (e.ctrlKey && e.key === 'y') this.redo()
+      if (!this.selectedObj) return
+      if (e.key === '+' || e.key === '=') this.selectedObj.size = Math.min(200, this.selectedObj.size + 5)
+      else if (e.key === '-' || e.key === '_') this.selectedObj.size = Math.max(30, this.selectedObj.size - 5)
+      else if (e.key.toLowerCase() === 'r') this.selectedObj.rotation = (this.selectedObj.rotation + 15) % 360
+      else if (e.key === 'Delete' || e.key === 'Backspace') this.deleteSelected()
+      this.redrawObjects()
+      this.saveState()
     },
     deleteSelected() {
       if (this.selectedObj) {
-        const index = this.objects.indexOf(this.selectedObj)
-        if (index > -1) {
-          this.objects.splice(index, 1)
-          this.selectedObj = null
-          this.redrawObjects()
-          this.saveState()
-        }
+        const i = this.objects.indexOf(this.selectedObj)
+        if (i > -1) this.objects.splice(i, 1)
+        this.selectedObj = null
+        this.redrawObjects()
+        this.saveState()
       }
     },
     saveState() {
@@ -305,9 +269,9 @@ export default {
         this.drawCtx.drawImage(img, 0, 0)
       }
       this.objects = []
-      for (let objData of state.objects) {
-        const obj = { ...objData, img: new Image() }
-        obj.img.src = objData.src
+      for (let o of state.objects) {
+        const obj = { ...o, img: new Image() }
+        obj.img.src = o.src
         this.objects.push(obj)
       }
       this.selectedObj = null
