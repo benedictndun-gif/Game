@@ -6,10 +6,18 @@
     <div class="puzzle-layout">
       <!-- Canvas Puzzle -->
       <div class="puzzle-left">
-        <canvas ref="canvas" width="800" height="600"
+        <canvas
+          ref="canvas"
+          width="800"
+          height="600"
           @mousedown="startDrag"
           @mousemove="onDrag"
-          @mouseup="stopDrag"></canvas>
+          @mouseup="stopDrag"
+          @mouseleave="stopDrag"
+          @touchstart.prevent="startDrag"
+          @touchmove.prevent="onDrag"
+          @touchend="stopDrag">
+        </canvas>
         
         <div class="toolbar">
           <button class="action-btn restart" @click="restartPuzzle">⟳ Restart</button>
@@ -69,6 +77,22 @@ export default {
     window.removeEventListener("resize", this.resizeCanvas);
   },
   methods: {
+    // Mendapatkan posisi kursor atau sentuhan
+    getEventPosition(e) {
+      const rect = this.$refs.canvas.getBoundingClientRect();
+      if (e.touches && e.touches.length > 0) {
+        return {
+          offsetX: e.touches[0].clientX - rect.left,
+          offsetY: e.touches[0].clientY - rect.top
+        };
+      } else {
+        return {
+          offsetX: e.offsetX,
+          offsetY: e.offsetY
+        };
+      }
+    },
+
     resizeCanvas() {
       const canvas = this.$refs.canvas;
       const containerWidth = window.innerWidth < 900 ? window.innerWidth * 0.9 : 800;
@@ -135,7 +159,7 @@ export default {
     },
 
     startDrag(e) {
-      const { offsetX, offsetY } = e;
+      const { offsetX, offsetY } = this.getEventPosition(e);
       for (let i = this.pieces.length - 1; i >= 0; i--) {
         let p = this.pieces[i];
         if (
@@ -152,9 +176,10 @@ export default {
 
     onDrag(e) {
       if (this.dragging) {
+        const { offsetX, offsetY } = this.getEventPosition(e);
         const canvas = this.$refs.canvas;
-        let newX = e.offsetX - this.offsetX;
-        let newY = e.offsetY - this.offsetY;
+        let newX = offsetX - this.offsetX;
+        let newY = offsetY - this.offsetY;
 
         // 🔒 Batasi agar tidak keluar dari area canvas
         newX = Math.max(0, Math.min(canvas.width - this.dragging.width, newX));
@@ -255,6 +280,7 @@ canvas {
   background: rgba(255,255,255,0.9);
   max-width: 100%;
   height: auto;
+  touch-action: none; /* 🔒 agar sentuhan tidak memicu scroll */
 }
 
 .toolbar {
