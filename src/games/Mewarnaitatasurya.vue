@@ -192,24 +192,31 @@ export default {
       this.draggingObj = null;
       this.drawCtx.closePath();
     },
-    addItem(item) {
-      const size = this.isMobile() ? 60 : 80;
-      const obj = {
-        name: item.name,
-        img: new Image(),
-        x: Math.random() * (this.canvasWidth - size),
-        y: Math.random() * (this.canvasHeight - size),
-        size: size,
-        rotation: 0,
-        src: item.src,
-      };
-      obj.img.src = item.src;
-      obj.img.onload = () => {
-        this.objects.push(obj);
-        this.redrawObjects();
-        this.saveState();
-      };
-    },
+addItem(item) {
+  const size = this.isMobile() ? 60 : 80;
+  const obj = {
+    name: item.name,
+    img: new Image(),
+    size: size,
+    rotation: 0,
+    src: item.src,
+  };
+  obj.img.src = item.src;
+
+  // Posisi tengah kanvas, sesuaikan dengan zoom & pan
+  const centerX = (this.canvasWidth / 2 - this.panX) / this.scale - size / 2;
+  const centerY = (this.canvasHeight / 2 - this.panY) / this.scale - size / 2;
+
+  obj.x = centerX;
+  obj.y = centerY;
+
+  obj.img.onload = () => {
+    this.objects.push(obj);
+    this.redrawObjects();
+    this.saveState();
+  };
+},
+
     redrawObjects() {
       this.objectCtx.setTransform(this.scale, 0, 0, this.scale, this.panX, this.panY);
       this.objectCtx.clearRect(
