@@ -240,6 +240,7 @@ export default {
   background-size: cover;
   background-position: center;
   min-height: 100vh;
+  touch-action: none;
 }
 
 .back-btn {
