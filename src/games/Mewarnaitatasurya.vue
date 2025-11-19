@@ -1,98 +1,91 @@
 <template>
   <div class="Mewarnaitatasurya">
-    <!-- Header: Back Button & History Controls -->
-    <div class="header">
-      <button @click="$router.back()" class="back-btn">Kembali</button>
-      <div class="history-btns">
-        <button @click="undo" :disabled="historyIndex <= 0" class="history-btn">Undo</button>
-        <button @click="redo" :disabled="historyIndex >= history.length - 1" class="history-btn">Redo</button>
+    <!-- Left Toolbar -->
+    <div class="left-toolbar">
+      <div class="tool-group">
+        <button class="tool-btn" :class="{ active: currentTool === 'pencil' }" @click="setTool('pencil')" title="Pensil">✏️</button>
+        <button class="tool-btn" :class="{ active: currentTool === 'eraser' }" @click="setTool('eraser')" title="Penghapus">🧼</button>
       </div>
-    </div>
-
-    <!-- Canvas Area -->
-    <div class="canvas-container">
-      <div class="canvas">
-        <canvas
-          ref="drawCanvas"
-          :width="canvasWidth"
-          :height="canvasHeight"
-          style="position: absolute; top: 0; left: 0; z-index: 0"
-        ></canvas>
-        <canvas
-          ref="objectCanvas"
-          :width="canvasWidth"
-          :height="canvasHeight"
-          style="position: relative; z-index: 1; cursor: crosshair"
-          @mousedown="startAction"
-          @mousemove="moveAction"
-          @mouseup="stopAction"
-          @mouseleave="stopAction"
-        ></canvas>
-      </div>
-    </div>
-
-    <!-- Toolbar: Tools, Colors, Size -->
-    <div class="toolbar-section">
-      <div class="tools-colors-row">
-        <!-- Tools -->
+      <div class="color-palette">
         <button
-          class="tool-btn"
-          :class="{ active: currentTool === 'pencil' }"
-          @click="setTool('pencil')"
-          title="Pensil"
-        >✏️</button>
-        <button
-          class="tool-btn"
-          :class="{ active: currentTool === 'eraser' }"
-          @click="setTool('eraser')"
-          title="Penghapus"
-        >🧼</button>
-
-        <!-- Colors -->
-        <button
-          v-for="color in colors"
-          :key="color"
-          class="color-btn"
-          :style="{ backgroundColor: color }"
-          :class="{ active: currentColor === color && currentTool !== 'eraser' }"
-          @click="setColor(color)"
+            v-for="color in colors"
+            :key="color"
+            class="color-btn"
+            :style="{ backgroundColor: color }"
+            :class="{ active: currentColor === color && currentTool !== 'eraser' }"
+            @click="setColor(color)"
         ></button>
       </div>
-      <!-- Size Slider -->
       <div class="size-control">
-        <label>Ukuran Kuas: {{ toolSize }}</label>
+        <label>Ukuran</label>
         <input type="range" min="1" max="50" v-model.number="toolSize" />
+        <span>{{ toolSize }}</span>
       </div>
     </div>
 
-    <!-- Palette: Draggable Objects -->
-    <div class="palette-section">
-      <img
-        v-for="item in items"
-        :key="item.name"
-        :src="item.src"
-        :alt="item.name"
-        class="palette-item"
-        @click="addItem(item)"
-        draggable="false"
-      />
-      <button @click="saveCanvas" class="save-btn">Simpan</button>
-    </div>
-
-    <!-- Object Controls (optional, shown when an object is selected) -->
-    <div v-if="selectedObj" class="control-panel">
-      <div class="controls">
-        <div class="control-item">
-          <label>Rotasi: {{ selectedObj.rotation }}°</label>
-          <input type="range" min="0" max="360" v-model.number="selectedObj.rotation" @input="redrawObjects" @change="saveState" />
+    <!-- Main Content (Canvas) -->
+    <div class="main-content">
+      <div class="header">
+        <button @click="$router.back()" class="back-btn">Kembali</button>
+        <div class="history-btns">
+          <button @click="undo" :disabled="historyIndex <= 0" class="history-btn">Undo</button>
+          <button @click="redo" :disabled="historyIndex >= history.length - 1" class="history-btn">Redo</button>
         </div>
-        <div class="control-item">
-          <label>Ukuran: {{ selectedObj.size }}</label>
-          <input type="range" min="20" max="200" v-model.number="selectedObj.size" @input="redrawObjects" @change="saveState" />
+      </div>
+      <div class="canvas-container">
+        <div class="canvas">
+          <canvas
+            ref="drawCanvas"
+            :width="canvasWidth"
+            :height="canvasHeight"
+            style="position: absolute; top: 0; left: 0; z-index: 0"
+          ></canvas>
+          <canvas
+            ref="objectCanvas"
+            :width="canvasWidth"
+            :height="canvasHeight"
+            style="position: relative; z-index: 1; cursor: crosshair"
+            @mousedown="startAction"
+            @mousemove="moveAction"
+            @mouseup="stopAction"
+            @mouseleave="stopAction"
+          ></canvas>
         </div>
-        <button @click="deleteSelectedObject" class="delete-btn">🗑️</button>
       </div>
     </div>
+
+    <!-- Right Palette -->
+    <div class="right-palette">
+      <h3>Objek Tata Surya</h3>
+      <div class="palette-items">
+        <img
+          v-for="item in items"
+          :key="item.name"
+          :src="item.src"
+          :alt="item.name"
+          class="palette-item"
+          @click="addItem(item)"
+          draggable="false"
+          :title="item.name"
+        />
+      </div>
+      <button @click="saveCanvas" class="save-btn">Simpan Gambar</button>
+    </div>
+
+     <!-- Object Controls (optional, shown when an object is selected) -->
+     <div v-if="selectedObj" class="control-panel">
+       <div class="controls">
+         <div class="control-item">
+           <label>Rotasi: {{ selectedObj.rotation }}°</label>
+           <input type="range" min="0" max="360" v-model.number="selectedObj.rotation" @input="redrawObjects" @change="saveState" />
+         </div>
+         <div class="control-item">
+           <label>Ukuran: {{ selectedObj.size }}</label>
+           <input type="range" min="20" max="200" v-model.number="selectedObj.size" @input="redrawObjects" @change="saveState" />
+         </div>
+         <button @click="deleteSelectedObject" class="delete-btn">🗑️</button>
+       </div>
+     </div>
   </div>
 </template>
 
@@ -174,10 +167,10 @@ export default {
     setCanvasSize() {
       if (this.isMobile()) {
         this.canvasWidth = window.innerWidth * 0.95;
-        this.canvasHeight = window.innerHeight * 0.5;
+        this.canvasHeight = window.innerHeight * 0.4; // Adjusted for mobile
       } else {
-        this.canvasWidth = 1000;
-        this.canvasHeight = 500;
+        this.canvasWidth = window.innerWidth * 0.6; // Take up 60% of viewport width
+        this.canvasHeight = window.innerHeight * 0.75; // Take up 75% of viewport height
       }
       this.$nextTick(() => {
         if (this.$refs.drawCanvas && this.$refs.objectCanvas) {
@@ -455,11 +448,11 @@ export default {
 
 .Mewarnaitatasurya {
   position: relative;
-  background: #000;
+  background: #1a1a1a;
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: stretch;
   padding: 10px;
   overflow-x: hidden;
 }
@@ -467,11 +460,11 @@ export default {
 /* Header */
 .header {
   width: 100%;
-  max-width: 1000px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
+  padding: 0 10px;
   padding: 0 5px;
 }
 
@@ -522,10 +515,10 @@ export default {
 
 /* Canvas Container */
 .canvas-container {
-  width: 100%;
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
+  align-items: center;
+  flex-grow: 1;
 }
 
 .canvas {
@@ -537,29 +530,57 @@ export default {
   touch-action: none;
 }
 
-/* Toolbar Section */
-.toolbar-section {
-  width: 100%;
-  max-width: 600px;
-  background: rgba(40, 40, 40, 0.95);
+/* Layout Sections */
+.left-toolbar, .right-palette {
+  background: rgba(40, 40, 40, 0.8);
   border-radius: 15px;
-  padding: 15px;
-  margin-bottom: 15px;
+  padding: 20px 15px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
 }
 
-.tools-colors-row {
+.left-toolbar {
+  flex-basis: 100px;
+}
+
+.main-content {
+  flex-grow: 1;
   display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  padding: 0 15px;
+}
+
+.right-palette {
+  flex-basis: 240px;
+}
+
+.right-palette h3 {
+  color: #fff;
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  text-align: center;
+}
+
+/* Left Toolbar Content */
+.tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.color-palette {
+  display: flex;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  justify-content: center;
+  gap: 8px;
 }
 
 .tool-btn {
-  width: 45px;
-  height: 45px;
+  width: 50px;
+  height: 50px;
   border: 2px solid #666;
   cursor: pointer;
   border-radius: 50%;
@@ -580,8 +601,8 @@ export default {
 }
 
 .color-btn {
-  width: 45px;
-  height: 45px;
+  width: 35px;
+  height: 35px;
   border: 2px solid #666;
   cursor: pointer;
   border-radius: 50%;
@@ -596,48 +617,43 @@ export default {
 }
 
 .size-control {
-  background: rgba(60, 60, 60, 0.9);
-  padding: 10px 15px;
-  border-radius: 10px;
   width: 100%;
-  max-width: 250px;
-  margin: 0 auto;
+  text-align: center;
+  color: #fff;
 }
 
 .size-control label {
   display: block;
   font-size: 13px;
   font-weight: bold;
-  color: #fff;
   margin-bottom: 8px;
-  text-align: center;
 }
 
 .size-control input[type="range"] {
   width: 100%;
   cursor: pointer;
   accent-color: #4CAF50;
+  margin-bottom: 5px;
 }
 
-/* Palette Section */
-.palette-section {
-  width: 100%;
-  max-width: 600px;
-  background: rgba(40, 40, 40, 0.95);
-  border-radius: 15px;
-  padding: 15px;
+.size-control span {
+  font-size: 12px;
+}
+
+/* Right Palette Content */
+.palette-items {
   display: flex;
-  gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  margin-bottom: 15px;
+  gap: 10px;
+  flex-grow: 1;
+  overflow-y: auto;
+  max-height: 70vh;
 }
 
 .palette-item {
-  width: 55px;
-  height: 55px;
+  width: 60px;
+  height: 60px;
   cursor: pointer;
   transition: transform 0.2s;
   border-radius: 12px;
@@ -646,17 +662,23 @@ export default {
   padding: 3px;
 }
 
+.palette-item:hover {
+  transform: scale(1.1);
+  background: rgba(255,255,255,0.2);
+}
+
 .palette-item:active {
   transform: scale(0.9);
 }
 
 .save-btn {
+  width: 100%;
   padding: 12px 24px;
   border: none;
   border-radius: 12px;
   background: #4CAF50;
   color: #fff;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
@@ -734,69 +756,26 @@ export default {
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .Mewarnaitatasurya {
-    padding: 8px;
+    flex-direction: column;
   }
 
-  .header {
+  .left-toolbar, .right-palette {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+    flex-basis: auto;
+    padding: 10px;
     margin-bottom: 10px;
   }
 
-  .back-btn {
-    padding: 8px 16px;
-    font-size: 14px;
-  }
-
-  .history-btn {
-    padding: 8px 12px;
-    font-size: 14px;
-    min-width: 60px;
-  }
-
-  .toolbar-section {
-    padding: 12px;
-    margin-bottom: 12px;
-  }
-
-  .tool-btn, .color-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
-  }
-
-  .size-control {
-    max-width: 200px;
-  }
-
-  .palette-section {
-    padding: 12px;
-    gap: 10px;
-  }
-
-  .palette-item {
-    width: 48px;
-    height: 48px;
-  }
-
-  .save-btn {
-    padding: 10px 20px;
-    font-size: 16px;
+  .main-content {
+    order: -1; /* Move canvas to top on mobile */
+    padding: 0;
   }
 
   .control-panel {
     padding: 12px 15px;
   }
 
-  .controls {
-    gap: 10px;
-  }
-
-  .control-item label {
-    font-size: 10px;
-  }
-
-  .delete-btn {
-    padding: 8px 12px;
-    font-size: 16px;
-  }
 }
 </style>
