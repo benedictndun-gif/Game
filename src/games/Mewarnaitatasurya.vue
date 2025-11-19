@@ -1,3 +1,101 @@
+<template>
+  <div class="Mewarnaitatasurya">
+    <!-- Header: Back Button & History Controls -->
+    <div class="header">
+      <button @click="$router.back()" class="back-btn">Kembali</button>
+      <div class="history-btns">
+        <button @click="undo" :disabled="historyIndex <= 0" class="history-btn">Undo</button>
+        <button @click="redo" :disabled="historyIndex >= history.length - 1" class="history-btn">Redo</button>
+      </div>
+    </div>
+
+    <!-- Canvas Area -->
+    <div class="canvas-container">
+      <div class="canvas">
+        <canvas
+          ref="drawCanvas"
+          :width="canvasWidth"
+          :height="canvasHeight"
+          style="position: absolute; top: 0; left: 0; z-index: 0"
+        ></canvas>
+        <canvas
+          ref="objectCanvas"
+          :width="canvasWidth"
+          :height="canvasHeight"
+          style="position: relative; z-index: 1; cursor: crosshair"
+          @mousedown="startAction"
+          @mousemove="moveAction"
+          @mouseup="stopAction"
+          @mouseleave="stopAction"
+        ></canvas>
+      </div>
+    </div>
+
+    <!-- Toolbar: Tools, Colors, Size -->
+    <div class="toolbar-section">
+      <div class="tools-colors-row">
+        <!-- Tools -->
+        <button
+          class="tool-btn"
+          :class="{ active: currentTool === 'pencil' }"
+          @click="setTool('pencil')"
+          title="Pensil"
+        >✏️</button>
+        <button
+          class="tool-btn"
+          :class="{ active: currentTool === 'eraser' }"
+          @click="setTool('eraser')"
+          title="Penghapus"
+        >🧼</button>
+
+        <!-- Colors -->
+        <button
+          v-for="color in colors"
+          :key="color"
+          class="color-btn"
+          :style="{ backgroundColor: color }"
+          :class="{ active: currentColor === color && currentTool !== 'eraser' }"
+          @click="setColor(color)"
+        ></button>
+      </div>
+      <!-- Size Slider -->
+      <div class="size-control">
+        <label>Ukuran Kuas: {{ toolSize }}</label>
+        <input type="range" min="1" max="50" v-model.number="toolSize" />
+      </div>
+    </div>
+
+    <!-- Palette: Draggable Objects -->
+    <div class="palette-section">
+      <img
+        v-for="item in items"
+        :key="item.name"
+        :src="item.src"
+        :alt="item.name"
+        class="palette-item"
+        @click="addItem(item)"
+        draggable="false"
+      />
+      <button @click="saveCanvas" class="save-btn">Simpan</button>
+    </div>
+
+    <!-- Object Controls (optional, shown when an object is selected) -->
+    <div v-if="selectedObj" class="control-panel">
+      <div class="controls">
+        <div class="control-item">
+          <label>Rotasi: {{ selectedObj.rotation }}°</label>
+          <input type="range" min="0" max="360" v-model.number="selectedObj.rotation" @input="redrawObjects" @change="saveState" />
+        </div>
+        <div class="control-item">
+          <label>Ukuran: {{ selectedObj.size }}</label>
+          <input type="range" min="20" max="200" v-model.number="selectedObj.size" @input="redrawObjects" @change="saveState" />
+        </div>
+        <button @click="deleteSelectedObject" class="delete-btn">🗑️</button>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script>
 export default {
   name: "MewarnaiTataSurya",
@@ -60,6 +158,15 @@ export default {
     objCanvas.addEventListener("touchmove", this.handleTouchMove, { passive: false });
     objCanvas.addEventListener("touchend", this.handleTouchEnd, { passive: false });
   },
+  beforeUnmount() {
+    window.removeEventListener("resize", this.setCanvasSize);
+    const objCanvas = this.$refs.objectCanvas;
+    if (objCanvas) {
+      objCanvas.removeEventListener("touchstart", this.handleTouchStart);
+      objCanvas.removeEventListener("touchmove", this.handleTouchMove);
+      objCanvas.removeEventListener("touchend", this.handleTouchEnd);
+    }
+  },
   methods: {
     isMobile() {
       return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -72,6 +179,15 @@ export default {
         this.canvasWidth = 1000;
         this.canvasHeight = 500;
       }
+      this.$nextTick(() => {
+        if (this.$refs.drawCanvas && this.$refs.objectCanvas) {
+            this.$refs.drawCanvas.width = this.canvasWidth;
+            this.$refs.drawCanvas.height = this.canvasHeight;
+            this.$refs.objectCanvas.width = this.canvasWidth;
+            this.$refs.objectCanvas.height = this.canvasHeight;
+            this.restoreState(true); // Redraw everything after resize
+        }
+      });
     },
     // =========================
     // 🎨 DRAWING & OBJECT TOOLS
@@ -88,8 +204,8 @@ export default {
       const scaleX = this.canvasWidth / rect.width;
       const scaleY = this.canvasHeight / rect.height;
       return {
-        x: (e.clientX - rect.left) * scaleX,
-        y: (e.clientY - rect.top) * scaleY,
+        x: (e.clientX - rect.left) * scaleX ,
+        y: (e.clientY - rect.top) * scaleY ,
       };
     },
     // =========================
@@ -100,7 +216,7 @@ export default {
         // single touch → drag or draw
         const t = e.touches[0];
         const { x, y } = this.getCanvasCoordinates(t);
-        this.startAction({ offsetX: (x - this.panX) / this.scale, offsetY: (y - this.panY) / this.scale });
+        this.startAction({ offsetX: x, offsetY: y });
       } else if (e.touches.length === 2) {
         // double touch → pinch zoom
         this.isPinching = true;
@@ -128,7 +244,7 @@ export default {
       if (e.touches.length === 1) {
         const t = e.touches[0];
         const { x, y } = this.getCanvasCoordinates(t);
-        this.moveAction({ offsetX: (x - this.panX) / this.scale, offsetY: (y - this.panY) / this.scale });
+        this.moveAction({ offsetX: x, offsetY: y });
       }
     },
     handleTouchEnd(e) {
@@ -149,7 +265,10 @@ export default {
     // 🪐 OBJECT CONTROL
     // =========================
     startAction(e) {
-      const { offsetX, offsetY } = e;
+      const worldCoords = this.getCanvasWorldCoordinates(e);
+      const { offsetX, offsetY } = worldCoords;
+
+      this.drawing = true; // Assume drawing until an object is found
       for (let i = this.objects.length - 1; i >= 0; i--) {
         const obj = this.objects[i];
         if (offsetX >= obj.x && offsetX <= obj.x + obj.size && offsetY >= obj.y && offsetY <= obj.y + obj.size) {
@@ -157,30 +276,33 @@ export default {
           this.selectedObj = obj;
           this.offsetX = offsetX - obj.x;
           this.offsetY = offsetY - obj.y;
+          this.drawing = false; // It's a drag, not a draw
           return;
         }
       }
       this.selectedObj = null;
-      this.drawing = true;
+      
+      // Start drawing
+      this.drawCtx.save();
+      this.drawCtx.setTransform(this.scale, 0, 0, this.scale, this.panX, this.panY);
       this.drawCtx.beginPath();
       this.drawCtx.moveTo(offsetX, offsetY);
     },
     moveAction(e) {
-      const { offsetX, offsetY } = e;
+      const { offsetX, offsetY } = this.getCanvasWorldCoordinates(e);
       if (this.draggingObj) {
         this.draggingObj.x = Math.max(0, Math.min(this.canvasWidth - this.draggingObj.size, offsetX - this.offsetX));
         this.draggingObj.y = Math.max(0, Math.min(this.canvasHeight - this.draggingObj.size, offsetY - this.offsetY));
         this.redrawObjects();
       } else if (this.drawing) {
+        this.drawCtx.lineWidth = this.toolSize / this.scale;
         if (this.currentTool === "eraser") {
           this.drawCtx.globalCompositeOperation = "destination-out";
-          this.drawCtx.lineWidth = this.toolSize;
           this.drawCtx.lineTo(offsetX, offsetY);
           this.drawCtx.stroke();
         } else {
           this.drawCtx.globalCompositeOperation = "source-over";
           this.drawCtx.strokeStyle = this.currentColor;
-          this.drawCtx.lineWidth = this.toolSize;
           this.drawCtx.lineTo(offsetX, offsetY);
           this.drawCtx.stroke();
         }
@@ -190,7 +312,10 @@ export default {
       if (this.drawing || this.draggingObj) this.saveState();
       this.drawing = false;
       this.draggingObj = null;
-      this.drawCtx.closePath();
+      if (this.drawCtx.restore) {
+        this.drawCtx.closePath();
+        this.drawCtx.restore();
+      }
     },
     addItem(item) {
       const size = this.isMobile() ? 60 : 80;
@@ -211,13 +336,14 @@ export default {
       };
     },
     redrawObjects() {
-      this.objectCtx.setTransform(this.scale, 0, 0, this.scale, this.panX, this.panY);
       this.objectCtx.clearRect(
-        -this.panX / this.scale,
-        -this.panY / this.scale,
-        this.canvasWidth / this.scale,
-        this.canvasHeight / this.scale
+        0, 0, this.canvasWidth, this.canvasHeight
       );
+      this.objectCtx.save();
+      this.objectCtx.setTransform(this.scale, 0, 0, this.scale, this.panX, this.panY);
+
+      // Clear with transformed context
+      this.objectCtx.clearRect(-this.panX / this.scale, -this.panY / this.scale, this.canvasWidth / this.scale, this.canvasHeight / this.scale);
       for (let obj of this.objects) {
         this.objectCtx.save();
         this.objectCtx.translate(obj.x + obj.size / 2, obj.y + obj.size / 2);
@@ -225,6 +351,7 @@ export default {
         this.objectCtx.drawImage(obj.img, -obj.size / 2, -obj.size / 2, obj.size, obj.size);
         this.objectCtx.restore();
       }
+      this.objectCtx.restore();
     },
     saveCanvas() {
       const temp = document.createElement("canvas");
@@ -232,8 +359,13 @@ export default {
       temp.height = this.canvasHeight;
       const ctx = temp.getContext("2d");
       ctx.drawImage(this.$refs.drawCanvas, 0, 0);
-      ctx.drawImage(this.$refs.objectCanvas, 0, 0);
-      const link = document.createElement("a");
+      
+      // Draw objects onto the temporary canvas without transforms
+      for (let obj of this.objects) {
+          ctx.drawImage(obj.img, obj.x, obj.y, obj.size, obj.size);
+      }
+
+      const link = document.createElement('a');
       link.download = "gambar_tata_surya.png";
       link.href = temp.toDataURL();
       link.click();
@@ -252,26 +384,63 @@ export default {
     undo() {
       if (this.historyIndex > 0) {
         this.historyIndex--;
-        this.restoreState();
+        this.restoreState(false);
       }
     },
     redo() {
       if (this.historyIndex < this.history.length - 1) {
         this.historyIndex++;
-        this.restoreState();
+        this.restoreState(false);
       }
     },
-    restoreState() {
+    restoreState(isResize = false) {
+      if (this.history.length === 0) return;
       const s = this.history[this.historyIndex];
       const img = new Image();
       img.src = s.drawCanvas;
       img.onload = () => {
         this.drawCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
         this.drawCtx.drawImage(img, 0, 0);
+        if (isResize) this.redrawObjects(); // Also redraw objects if it's a resize event
       };
-      this.objects = s.objects.map((o) => ({ ...o, img: Object.assign(new Image(), { src: o.src }) }));
-      this.selectedObj = null;
-      this.redrawObjects();
+      
+      // Only restore objects if not a resize, to avoid losing current state
+      if (!isResize) {
+        this.objects = [];
+        this.selectedObj = null;
+        let loadedCount = 0;
+        if (s.objects.length === 0) {
+          this.redrawObjects();
+          return;
+        }
+        s.objects.forEach(o => {
+            const newImg = new Image();
+            const newObj = { ...o, img: newImg };
+            newImg.src = o.src;
+            newImg.onload = () => {
+                this.objects.push(newObj);
+                loadedCount++;
+                if (loadedCount === s.objects.length) {
+                    this.redrawObjects();
+                }
+            };
+        });
+      }
+    },
+    getCanvasWorldCoordinates(e) {
+      const { offsetX, offsetY } = e;
+      return {
+        offsetX: (offsetX - this.panX) / this.scale,
+        offsetY: (offsetY - this.panY) / this.scale,
+      };
+    },
+    deleteSelectedObject() {
+      if (this.selectedObj) {
+        this.objects = this.objects.filter(obj => obj !== this.selectedObj);
+        this.selectedObj = null;
+        this.redrawObjects();
+        this.saveState();
+      }
     },
   },
 };

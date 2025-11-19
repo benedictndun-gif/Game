@@ -6,7 +6,7 @@
         <li><router-link to="/games/susun-planet" class="btn">🪐 Susun Planet</router-link></li>
         <li><router-link to="/games/pilih-planet" class="btn">🌍 Pilih Planet Favorit</router-link></li>
         <li><router-link to="/games/mewarnai" class="btn">🎨 Mewarnai Planet</router-link></li>
-        <li><router-link to="/games/Mewarnaitatasurya" class="btn">🎨 Mewarnai Tata Surya</router-link></li>  
+        <li><router-link to="/games/MewarnaiTatasurya" class="btn">🎨 Mewarnai Tata Surya</router-link></li>  
         <li><router-link to="/games/PlanetImajinasi" class="btn">🃏 Planet Imajinasi</router-link></li>
       </ul>
       <router-link to="/home" class="btn back">⬅️ Kembali</router-link>
