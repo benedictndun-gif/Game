@@ -32,14 +32,22 @@
       </div>
     </div>
 
-    <!-- Popup selesai semua level -->
-    <div v-if="showComplete" class="complete-popup">
-      <div class="popup-content">
-        <h2>🎉 Selamat! 🎉</h2>
-        <p>Kamu berhasil menyelesaikan semua puzzle! 🧩🔥</p>
-        <button class="popup-btn" @click="$router.push('/games')">➡️ Lanjutkan</button>
-      </div>
-    </div>
+<!-- Popup selesai semua level -->
+<div v-if="showComplete" class="complete-popup">
+  <div class="popup-content animated-popup">
+
+    <div class="popup-icon">✨</div>
+
+    <h2 class="popup-title">🎉 Selamat! 🎉</h2>
+    <p class="popup-desc">Kamu berhasil menyelesaikan semua puzzle! 🧩🔥</p>
+
+    <button class="popup-btn glow" @click="$router.push('/games')">
+      ➡️ Lanjutkan
+    </button>
+
+  </div>
+</div>
+
   </div>
 </template>
 
@@ -329,6 +337,91 @@ canvas {
   width: 100%;
   border-radius: 8px;
 }
+
+/* === POPUP BARU === */
+.complete-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  animation: fadeIn 0.4s ease;
+}
+
+.popup-content {
+  background: white;
+  padding: 28px 35px;
+  width: 85%;
+  max-width: 360px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0px 8px 30px rgba(0,0,0,0.25);
+  animation: popIn 0.45s ease-out;
+}
+
+.popup-icon {
+  font-size: 50px;
+  margin-bottom: 10px;
+  animation: spin 1.5s linear infinite;
+}
+
+.popup-title {
+  font-size: 26px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.popup-desc {
+  font-size: 15px;
+  color: #555;
+  margin-bottom: 20px;
+}
+
+.popup-btn {
+  padding: 12px 25px;
+  font-size: 15px;
+  font-weight: bold;
+  border: none;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #ff7b00, #ff4800);
+  color: white;
+  cursor: pointer;
+  width: 100%;
+  transition: 0.25s;
+}
+
+.popup-btn.glow {
+  box-shadow: 0 0 12px rgba(255, 102, 0, 0.7),
+              0 0 22px rgba(255, 72, 0, 0.5);
+}
+
+.popup-btn:hover {
+  transform: scale(1.08);
+}
+
+/* ANIMASI */
+@keyframes popIn {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 
 /* Responsif */
 @media (max-width: 900px) {

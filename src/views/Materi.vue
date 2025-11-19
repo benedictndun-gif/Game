@@ -15,7 +15,7 @@ export default {
   name: "MateriPage",
   data() {
     return {
-      planets: ["Matahari","Merkurius","Venus","Bumi","Mars","Jupiter","Saturnus","Uranus","Neptunus"]
+      planets: ["Matahari","Merkurius","Venus","Bumi","Bulan","Mars","Jupiter","Saturnus","Uranus","Neptunus", "Bintang"]
     }
   }
 }

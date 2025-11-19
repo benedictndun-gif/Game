@@ -15,7 +15,7 @@
     </div>
 
     <!-- Tombol kembali ke materi utama -->
-    <router-link to="/materi" class="btn-next">🏠</router-link>
+    <router-link to="/materi/bintang" class="btn-next">▶</router-link>
 
     <!-- Voice Over -->
     <audio ref="voiceOver" :src="voiceSrc"></audio>

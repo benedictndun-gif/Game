@@ -132,6 +132,7 @@ export default {
       pinchStartDist: null,
       pinchStartScale: 1,
       isPinching: false,
+      backgroundImage: null,
     };
   },
   mounted() {
@@ -142,9 +143,13 @@ export default {
     this.objectCtx = this.$refs.objectCanvas.getContext("2d");
     this.drawCtx.lineCap = "round";
 
-    this.drawCtx.fillStyle = "white";
-    this.drawCtx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-    this.saveState();
+    // Load and draw the background image
+    this.backgroundImage = new Image();
+    this.backgroundImage.src = require("@/assets/canvas_background.jpg");
+    this.backgroundImage.onload = () => {
+      this.drawBackground();
+      this.saveState(); // Save initial state with background
+    };
 
     const objCanvas = this.$refs.objectCanvas;
     objCanvas.addEventListener("touchstart", this.handleTouchStart, { passive: false });
@@ -179,6 +184,7 @@ export default {
             this.$refs.objectCanvas.width = this.canvasWidth;
             this.$refs.objectCanvas.height = this.canvasHeight;
             this.restoreState(true); // Redraw everything after resize
+            this.drawBackground();
         }
       });
     },
@@ -434,6 +440,10 @@ export default {
         this.redrawObjects();
         this.saveState();
       }
+    },
+    drawBackground() {
+      if (!this.backgroundImage) return;
+      this.drawCtx.drawImage(this.backgroundImage, 0, 0, this.canvasWidth, this.canvasHeight);
     },
   },
 };

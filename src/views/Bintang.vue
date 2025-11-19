@@ -1,25 +1,25 @@
 <template>
   <div class="planet-container">
     <!-- Tombol Back -->
-    <router-link to="/materi/venus" class="btn-back">BACK◂</router-link>
+    <router-link to="/materi/neptunus" class="btn-back">BACK◂</router-link>
 
     <!-- Judul -->
-    <div class="planet-title">Bumi</div>
+    <div class="planet-title">Bintang</div>
 
     <div class="planet-content">
       <!-- Gambar Planet -->
       <div class="planet-image">
-        <img src="@/assets/Bumi.png" alt="Bumi" />
+        <img src="@/assets/Bintang.png" alt="Bintang" />
       </div>
 
       <!-- Deskripsi -->
       <div class="planet-desc">
-        <p>Bumi adalah satu-satunya planet yang diketahui memiliki kehidupan.</p>
+        <p>Bintang adalah benda langit yang memancarkan cahayanya sendiri. Matahari adalah bintang yang paling dekat dengan Bumi. Di malam hari, kita bisa melihat ribuan bintang lain yang sangat jauh.</p>
       </div>
     </div>
 
     <!-- Tombol Next -->
-    <router-link to="/materi/bulan" class="btn-next">▶</router-link>
+    <router-link to="/materi" class="btn-next">🏠</router-link>
 
     <!-- Voice Over Audio (disembunyikan) -->
     <audio ref="voiceOver" style="display: none;"></audio>
@@ -28,17 +28,16 @@
 
 <script>
 export default {
-  name: "BumiPage",
+  name: "BintangPage",
   data() {
     return {
-      voiceOverSrc: require('@/assets/Bumi.mp3')
+      voiceOverSrc: require('@/assets/Bintang.mp3')
     };
   },
   mounted() {
     this.playVoiceOver();
   },
   beforeUnmount() {
-    // Stop audio ketika leave page
     if (this.$refs.voiceOver) {
       this.$refs.voiceOver.pause();
       this.$refs.voiceOver.currentTime = 0;
@@ -46,14 +45,10 @@ export default {
   },
   methods: {
     playVoiceOver() {
-      // Kasih jeda 1 detik sebelum play
       setTimeout(() => {
         if (this.$refs.voiceOver) {
           this.$refs.voiceOver.src = this.voiceOverSrc;
-          this.$refs.voiceOver.load();
-          this.$refs.voiceOver.play().catch(err => {
-            console.error('Error playing audio:', err);
-          });
+          this.$refs.voiceOver.play().catch(err => console.error('Error playing audio:', err));
         }
       }, 1000);
     }

@@ -1,6 +1,6 @@
 <template>
   <div class="planet-container">
-    <router-link to="/materi/bumi" class="btn-back">BACK◂</router-link>
+    <router-link to="/materi/bulan" class="btn-back">BACK◂</router-link>
     <div class="planet-title">Mars</div>
 
     <div class="planet-content">

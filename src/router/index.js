@@ -24,6 +24,8 @@ import Saturnus from '@/views/saturnus.vue'
 import Uranus from '@/views/uranus.vue'
 import Neptunus from '@/views/neptunus.vue'
 import Matahari from '@/views/matahari.vue'
+import Bulan from '@/views/Bulan.vue'
+import Bintang from '@/views/Bintang.vue'
 
 const routes = [
   { path: '/', component: Welcome },
@@ -49,6 +51,8 @@ const routes = [
   { path: '/Materi/uranus', component: Uranus },
   { path: '/Materi/neptunus', component: Neptunus },
   { path: '/Materi/matahari', component: Matahari },
+  { path: '/Materi/bulan', component: Bulan },
+  { path: '/Materi/bintang', component: Bintang },
 ]
 
 export default createRouter({
